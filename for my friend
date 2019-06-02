@@ -1,0 +1,282 @@
+// Прога артёма.cpp: определяет точку входа для консольного приложения.
+//
+
+#include "stdafx.h"
+
+//#define _CRT_SECURE_NO_WARNINGS
+
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <cmath>
+
+
+using namespace std;
+
+const double pi = acos(double(-1));
+
+
+struct key_ {
+	double phi;
+	int r;
+	key_(double nphi = 0.0, int nr = 0);
+	void operator= (key_ k);
+	bool operator< (key_ k);
+};
+
+key_::key_(double nphi, int nr)
+{
+	phi = nphi;
+	r = nr;
+}
+void key_::operator= (key_ k)
+{
+	phi = k.phi;
+	r = k.r;
+}
+
+bool key_::operator< (key_ k)
+{
+	return (phi < k.phi) || (r > k.r);
+}
+
+
+struct Point{
+
+		double x;
+		double y;
+		key_ key;
+
+		Point (double new_x = 0.0, double new_y= 0.0, key_ nkey = 0.0){
+				x = new_x;
+				y = new_y;
+				key = nkey;
+
+		};
+
+		bool compare(Point b);
+		bool operator< (Point p){
+			return (x < p.x || (x == p.x && y < p.y));
+		};
+		bool operator> (Point p){
+			return (x > p.x || (x == p.x && y > p.y));
+		};
+		void operator= (Point p){
+			x = p.x;
+			y = p.y;
+			key = p.key;
+
+		};
+		bool operator!= (Point p) {
+			return ((x != p.x) || (y != p.y) || key < p.key || p.key < key);		
+		};
+	
+		double angl(Point a, Point b){
+
+			if (b.y == a.y) return pi / 2.0;
+			if (a.y > b.y) return atan(double(b.x - a.x) / double(a.y - b.y));
+			else return atan(double(b.y - a.y) / double(b.x - a.x)) + pi / 2.0;
+		};
+	
+};
+
+class Stack {
+	Point* mem;
+	int size;
+	int n;
+public:
+	Stack(int s = 1000);
+	void add(Point x);
+	Point front();
+	Point NextFront();
+	Point pop();
+	int getsize();
+};
+
+Stack::Stack(int s){
+	size = s;
+	mem = new Point[size];
+	n = 0;
+
+}
+
+// Здесь ошибка. pmem[i] = x не работает, а push_back добавляет элементы, но уже сверх нужного
+void Stack::add(Point x)
+{
+	if (n == size) throw 1;
+	mem[n++] = x;
+}
+
+Point Stack::front()
+{
+	return mem[n - 1];
+}
+
+Point Stack::NextFront()
+{
+	return mem[n - 2];
+}
+
+Point Stack::pop()
+{
+	if (n == 0)
+	{
+		return mem[n - 1];
+	}
+}
+
+int Stack::getsize()
+{
+	return n;
+}
+
+class BinaryHeap {
+	Point* mem;
+	//vector <Point> pmem;
+	int size;
+	int n;
+private:
+	void up(int c);
+	void down(int c);
+
+public:
+	BinaryHeap(int s = 1000);
+	void add(Point p);
+	Point extract();
+	Point Init();
+};
+
+BinaryHeap::BinaryHeap(int s)
+{
+	Point* mem;
+	size = s;
+	n = 0;
+	mem = new Point [size];
+
+}
+
+Point BinaryHeap::Init()
+{
+	return Point();
+}
+void  BinaryHeap::add(Point p)
+{
+	if (n == size - 1) throw 3;
+	mem[++n] = p;
+	up(n);
+}
+
+void BinaryHeap::up(int c)
+{
+	int m = c / 2;
+	if (m == 0) return;
+	
+	while (mem[c].key < mem[m].key){
+		Point tmp = mem[m];
+		mem[m] = mem[c];
+		mem[c] = tmp;
+	}
+}
+
+
+Point BinaryHeap::extract()
+{
+	if (n == 0) throw 4;
+	Point ans = mem[1];
+	mem[1] = mem[n--];
+	down(1);
+	return ans;
+}
+
+void BinaryHeap::down(int c){
+
+	int m = c * 2;
+	if (m > n) return;
+	if (m + 1 <= n && mem[m + 1].key < mem[m].key) m++;
+
+    if (mem[m].key < mem[c].key) {
+    	Point tmp = mem[m];
+		mem[m] = mem[c];
+		mem[c] = tmp;
+    	down (m);
+   }
+
+}
+
+double povorot (Point p1, Point p2, Point p3) {
+	double ax = p2.x - p1.x,
+	bx = p1.x - p3.x,
+	ay = p2.y - p1.y,
+	by = p1.y - p3.y;
+	return ax * by - bx * ay;		
+};
+
+
+void grahamscan(vector<Point>& vec, BinaryHeap& h, Stack& s)
+{
+	int n = vec.size();
+	Point start = vec[0];
+	for (int i = 0; i < n; i++)
+	{
+		if (vec[i] < start)	
+		{
+			start = vec[i];
+		}
+	}
+	s.add(start);
+	h.add(vec[0]);
+	for ( int i = 1; i < n; i++)
+	{
+		if (vec[i] != start)
+		{
+			vec[i].key = start.key; // Key(angl(start, vec[i]), vec[i].range(start));
+			h.add(vec[i]);
+		}
+	}
+	s.add(h.extract());
+	Point tmp;
+	for (int i = 0; i < n - 2; i++)
+	{
+		tmp = h.extract();
+		while (povorot(s.front(),s.NextFront(), tmp) < 0) {
+			s.pop();
+		}
+		s.add(tmp);
+	}
+};
+
+
+
+
+int _tmain(int argc, _TCHAR* argv[])
+{
+	int x, y;
+	vector<Point> vec, res;
+	fstream fs("input.txt");
+	if (!fs)
+	{
+		cout << "File not found \n";
+		system("pause");
+	}
+	while (fs >> x) {
+		fs >> y;
+		vec.push_back(Point(x, y, 0.0));
+	}
+	int n = int(vec.size());
+	BinaryHeap h(n);
+	Stack s(n);
+	try
+	{
+		grahamscan(vec, h, s);
+		int nn = s.getsize();
+		for (int i = 0; i < nn; i++) res.push_back(s.pop());
+	}
+	catch (int x) {
+		cout << "Error number: " << x << endl;
+	}
+
+	fstream ls("output.txt");
+	ls<<'1';
+	for (int i = int(res.size()) - 1; i >= 0; i--) ls << res[i].x << ' ' << res[i].y << endl;
+	return 0;
+}
